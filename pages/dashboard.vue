@@ -5,7 +5,10 @@
 </template>
 
 <script setup lang="ts">
+// pages/dashboard.vue
+
 definePageMeta({
-  middleware: 'auth' // Asegura que solo los usuarios autenticados accedan a esta página
+  middleware: 'authadmin' // Solo accesible si el usuario está logueado
 });
+
 </script>

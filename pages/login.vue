@@ -18,8 +18,14 @@
 import { z } from 'zod'
 import type { FormSubmitEvent } from '#ui/types'
 
+// pages/login.vue
+
+definePageMeta({
+  middleware: 'authenticated' // Redirige a usuarios autenticados fuera de esta página
+});
+
 const toast = useToast()
-const { login } = useFirebaseAuth();
+const { login } = useFirebaseAuth()
 
 const schema = z.object({
   email: z.string().email('Invalid email'),
@@ -33,21 +39,61 @@ const state = reactive({
   password: undefined
 })
 
+// Definición de la interfaz para las notificaciones personalizadas
+interface CustomNotification {
+  title: string
+  description?: string
+  type?: 'success' | 'error' | 'info' | 'warning' // Ajusta según los valores permitidos
+  timeout?: number
+  callback?: () => Promise<void>
+}
+
+// Función para agregar una notificación usando la interfaz CustomNotification
+function addToastNotification(notification: CustomNotification) {
+  toast.add(notification as Partial<CustomNotification>)
+}
+
 async function onSubmit(event: FormSubmitEvent<Schema>) {
   try {
-    await login(event.data.email, event.data.password)
-    toast.add({
-      title: 'redirect to dasboard...',
-      timeout: 2500,
+    await login(event.data.email, event.data.password);
+    
+    addToastNotification({
+      title: 'Redirecting to dashboard...',
+      timeout: 1500,
       callback: async () => {
-        console.log('redirect to dasboard...');
-        // ... or as a route object
-        await navigateTo({ path: '/dashboard' })
+        await navigateTo({ path: '/' });
       }
-    })
+    });
   } catch (error) {
-    console.log(error);
+    if (typeof error === 'object' && error !== null && 'code' in error) {
+      const firebaseError = error as { code: string };
 
+      if (firebaseError.code === 'auth/wrong-password') {
+        addToastNotification({
+          title: 'Error: Incorrect password',
+          description: 'The password entered is incorrect.',
+          type: 'error'
+        });
+      } else if (firebaseError.code === 'auth/user-not-found') {
+        addToastNotification({
+          title: 'Error: User not found',
+          description: 'No user found with the provided email.',
+          type: 'error'
+        });
+      } else {
+        addToastNotification({
+          title: 'Login failed',
+          description: 'An unexpected error occurred. Please try again later.',
+          type: 'error'
+        });
+      }
+    } else {
+      addToastNotification({
+        title: 'Login failed',
+        description: 'An unexpected error occurred. Please try again later.',
+        type: 'error'
+      });
+    }
   }
 }
 

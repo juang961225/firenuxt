@@ -1,8 +1,8 @@
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import { getAuth, setPersistence, browserLocalPersistence } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
-export default defineNuxtPlugin((nuxtApp) => {
+export default defineNuxtPlugin(async (nuxtApp) => {
   const {
     apiKey,
     authDomain,
@@ -18,7 +18,6 @@ export default defineNuxtPlugin((nuxtApp) => {
     return;
   }
 
-  // Configuración de Firebase
   const firebaseConfig = {
     apiKey,
     authDomain,
@@ -28,7 +27,6 @@ export default defineNuxtPlugin((nuxtApp) => {
     appId,
   };
 
-  // Inicialización de Firebase con reintentos en caso de fallo
   let app;
   try {
     app = initializeApp(firebaseConfig);
@@ -39,7 +37,15 @@ export default defineNuxtPlugin((nuxtApp) => {
   const auth = getAuth(app);
   const db = getFirestore(app);
 
-  // Proveer $auth y $db para que estén disponibles en el contexto de Nuxt
+  // Configurar persistencia en local para mantener la sesión
+  await setPersistence(auth, browserLocalPersistence)
+    .then(() => {
+      console.log("Persistencia configurada correctamente");
+    })
+    .catch((error) => {
+      console.error("Error al establecer persistencia:", error);
+    });
+
   return {
     provide: {
       auth,

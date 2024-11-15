@@ -22,6 +22,13 @@
 import { z } from 'zod'
 import type { FormSubmitEvent } from '#ui/types'
 
+// pages/login.vue
+
+definePageMeta({
+  middleware: 'authenticated' // Redirige a usuarios autenticados fuera de esta página
+});
+
+
 const toast = useToast()
 const { register } = useFirebaseAuth();
 
@@ -39,17 +46,15 @@ const state = reactive({
 })
 
 async function onSubmit(event: FormSubmitEvent<Schema>) {
-  console.log(event.data.role);
   
   try {
     await register(event.data.email, event.data.password, event.data.role);
     toast.add({
       title: 'redirect to dasboard...',
-      timeout: 2500,
+      timeout: 1500,
       callback: async () => {
-        console.log('redirect to dasboard...');
         // ... or as a route object
-        await navigateTo({ path: '/dashboard' })
+        await navigateTo({ path: '/' })
       }
     })
   } catch (error) {
