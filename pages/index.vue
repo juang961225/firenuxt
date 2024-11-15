@@ -10,11 +10,11 @@
         <h2 class="mb-4 text-primary-400 font-bold">Your medical appointments</h2>
         <ul>
           <!-- Iterar sobre appointments para mostrar las citas -->
-          <li v-for="(appointment, index) in appointments" :key="index">
+          <li v-for="(appointment, index) in filteredAppointments" :key="index">
             {{ appointment.doctor }} - {{ appointment.date }}
           </li>
         </ul>
-        <div class="mt-4">
+        <div v-if="userRole != 'Doc'" class="mt-4">
           <UButton label="Book Appointment" @click="isOpen = true" />
 
           <UModal v-model="isOpen">
@@ -25,7 +25,8 @@
               <!-- Select para elegir el médico -->
               <div class="mb-4">
                 <label for="doctor" class="block mb-2">Choose Doctor:</label>
-                <USelect v-model="selectedDoctor" :options="doctors" option-attribute="name" placeholder="Select a Doctor" />
+                <USelect v-model="selectedDoctor" :options="doctors" option-attribute="name"
+                  placeholder="Select a Doctor" />
               </div>
 
               <!-- Input para seleccionar la fecha -->
@@ -45,8 +46,6 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-
 // Interfaces para los datos de los doctores y citas
 interface Doctor {
   name: string;
@@ -59,15 +58,38 @@ const selectedDoctor = ref('');
 const selectedDate = ref('');
 
 // Importa las funciones necesarias de tu composable
-const { currentUser, getDoctors, createAppointment, getAppointments } = useFirebaseAuth();
+const { currentUser, getDoctors, createAppointment, getAppointments, getUserRole } = useFirebaseAuth();
 
+const userRole = ref(''); // Inicializamos userRole como una referencia
 const doctors = ref<Doctor[]>([]);
 const appointments = ref<{ doctor: string; date: string }[]>([]);
 
+const filteredAppointments = computed(() => {
+  if (userRole.value === 'Doc' && currentUser.value) {
+
+    // Normalize both doctor and currentUser email for comparison
+    const doctorEmail = currentUser.value.email?.trim().toLowerCase();
+    console.log(doctorEmail);
+
+    // Si el usuario es un doctor, mostrar solo las citas de él
+    return appointments.value.filter(appointment => 
+      appointment.doctor.trim().toLowerCase() === doctorEmail
+    );
+  }
+  // Si no es doctor, mostrar todas las citas
+  return appointments.value;
+});
+
+
 // Obtener lista de doctores y citas al montar el componente
 onMounted(async () => {
+  if (currentUser.value) {
+    userRole.value = await getUserRole(); // Usar .value para asignar el valor a la referencia
+  } else {
+    userRole.value = ''; // Asignamos un valor por defecto en caso de que currentUser sea null o undefined
+  }
   doctors.value = await getDoctors();
-  appointments.value = await getAppointments(); // Asegúrate de que getAppointments devuelve un array de citas
+  appointments.value = await getAppointments();
 });
 
 // Función que se ejecuta al hacer submit para crear una nueva cita
@@ -76,7 +98,7 @@ const handleSubmit = async () => {
   console.log('Médico seleccionado:', selectedDoctor.value);
 
   await createAppointment(selectedDoctor.value, selectedDate.value); // Espera a que se cree la cita
-  
+
   // Después de crear la cita, vuelve a obtener las citas
   appointments.value = await getAppointments();
 
