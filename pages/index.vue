@@ -9,12 +9,9 @@
       <UCard>
         <h2 class="mb-4 text-primary-400 font-bold">Your medical appointments</h2>
         <ul>
-          <!-- Iterar sobre appointments para mostrar las citas -->
-          <li v-for="(appointment, index) in filteredAppointments" :key="index">
-            {{ appointment.doctor }} - {{ appointment.date }}
-          </li>
+          <UTable :rows="filteredAppointments" />
         </ul>
-        <div v-if="userRole != 'Doc'" class="mt-4">
+        <div v-if="userRole == 'User'" class="mt-4">
           <UButton label="Book Appointment" @click="isOpen = true" />
 
           <UModal v-model="isOpen">
@@ -62,23 +59,29 @@ const { currentUser, getDoctors, createAppointment, getAppointments, getUserRole
 
 const userRole = ref(''); // Inicializamos userRole como una referencia
 const doctors = ref<Doctor[]>([]);
-const appointments = ref<{ doctor: string; date: string }[]>([]);
+const appointments = ref<{ doctor: string; date: string; name:string}[]>([]);
 
 const filteredAppointments = computed(() => {
-  if (userRole.value === 'Doc' && currentUser.value) {
+  if (!currentUser.value) return []; // Si no hay usuario autenticado, devolver una lista vacía
 
-    // Normalize both doctor and currentUser email for comparison
-    const doctorEmail = currentUser.value.email?.trim().toLowerCase();
-    console.log(doctorEmail);
+  const userEmail = currentUser.value.email?.trim().toLowerCase(); // Obtener el correo del usuario
 
-    // Si el usuario es un doctor, mostrar solo las citas de él
-    return appointments.value.filter(appointment => 
-      appointment.doctor.trim().toLowerCase() === doctorEmail
+  if (userRole.value === 'Doc') {
+    // Si el usuario es un doctor, mostrar solo las citas asignadas a ese doctor
+    return appointments.value.filter(
+      appointment => appointment.doctor.trim().toLowerCase() === userEmail
+    );
+  } else if (userRole.value === 'User') {
+    // Si el usuario es un paciente (rol User), mostrar solo las citas que correspondan a su correo electrónico
+    return appointments.value.filter(
+      appointment => appointment.name.trim().toLowerCase() === userEmail // Usamos 'patient' en lugar de 'name'
     );
   }
-  // Si no es doctor, mostrar todas las citas
+
+  // Para otros roles, devolver todas las citas
   return appointments.value;
 });
+
 
 
 // Obtener lista de doctores y citas al montar el componente

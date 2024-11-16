@@ -14,7 +14,7 @@ interface Doctor {
 export const useFirebaseAuth = () => {
   const { $auth, $db } = useNuxtApp();
   const currentUser = ref<FirebaseUser | null>(null);
-  const appointments = ref<Array<{ doctor: string, date: string }>>([]);
+  const appointments = ref<Array<{ doctor: string, date: string, name: string }>>([]);
 
   // Solo usar localStorage si estamos en el cliente
   if (process.client) {
@@ -140,7 +140,7 @@ export const useFirebaseAuth = () => {
       const appointmentsRef = collection($db, "appointments");
       const querySnapshot = await getDocs(appointmentsRef);
 
-      const userAppointments: { doctor: string, date: string }[] = [];
+      const userAppointments: { doctor: string, date: string, name: string }[] = [];
 
       if (querySnapshot.empty) {
         console.log("No se encontraron citas médicas.");
@@ -153,6 +153,7 @@ export const useFirebaseAuth = () => {
           userAppointments.push({
             doctor: data.doctor,
             date: data.date,
+            name: data.name,
           });
         } else {
           console.log(`La cita ${doc.id} no tiene los campos requeridos ('doctor' y 'date').`);
@@ -172,6 +173,7 @@ export const useFirebaseAuth = () => {
         doctor,
         date,
         userId: currentUser.value?.uid,
+        name: currentUser.value?.email
       };
 
       // Asegúrate de que doctor y date son válidos y no contienen caracteres no permitidos
@@ -179,7 +181,7 @@ export const useFirebaseAuth = () => {
       await setDoc(doc($db, "appointments", docId), newAppointment);
 
       // Agregar la cita a la lista local
-      appointments.value.push({ doctor, date });
+      appointments.value.push({ doctor, date, name });
       console.log("Cita creada:", newAppointment);
     } catch (error) {
       console.error("Error al crear la cita:", error);
