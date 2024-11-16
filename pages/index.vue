@@ -82,8 +82,6 @@ const filteredAppointments = computed(() => {
   return appointments.value;
 });
 
-
-
 // Obtener lista de doctores y citas al montar el componente
 onMounted(async () => {
   if (currentUser.value) {

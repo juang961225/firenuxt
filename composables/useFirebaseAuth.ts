@@ -1,8 +1,8 @@
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, User } from "firebase/auth";
 import { doc, setDoc, getDoc, getDocs, collection, query, where } from "firebase/firestore";
-import { ref } from "vue";
 import type { User as FirebaseUser } from "firebase/auth";
 import type { DocumentData } from "firebase/firestore";
+import { nanoid } from 'nanoid';
 
 // Definir la estructura del usuario y doctor
 interface Doctor {
@@ -140,7 +140,7 @@ export const useFirebaseAuth = () => {
       const appointmentsRef = collection($db, "appointments");
       const querySnapshot = await getDocs(appointmentsRef);
 
-      const userAppointments: { doctor: string, date: string, name: string }[] = [];
+      const userAppointments: { doctor: string, date: string, name: string, id: string }[] = [];
 
       if (querySnapshot.empty) {
         console.log("No se encontraron citas médicas.");
@@ -154,6 +154,7 @@ export const useFirebaseAuth = () => {
             doctor: data.doctor,
             date: data.date,
             name: data.name,
+            id: data.id,
           });
         } else {
           console.log(`La cita ${doc.id} no tiene los campos requeridos ('doctor' y 'date').`);
@@ -169,16 +170,36 @@ export const useFirebaseAuth = () => {
 
   const createAppointment = async (doctor: string, date: string) => {
     try {
+      // Generar un ID único corto
+      let newId = nanoid(10);
+
+      // Verificar si ya existe un documento con ese ID
+      let appointmentExists = true;
+      while (appointmentExists) {
+        const docRef = doc($db, "appointments", newId);
+        const docSnapshot = await getDoc(docRef);
+
+        if (docSnapshot.exists()) {
+          // Si ya existe, generar un nuevo ID
+          newId = nanoid(10);
+        } else {
+          // Si no existe, podemos salir del loop
+          appointmentExists = false;
+        }
+      }
+
+      // Crear el objeto de la cita con el ID único
       const newAppointment = {
+        id: newId,
         doctor,
         date,
         userId: currentUser.value?.uid,
         name: currentUser.value?.email
       };
 
-      // Asegúrate de que doctor y date son válidos y no contienen caracteres no permitidos
+      // Asegúrate de que doctor y date son válidos
       const docId = `${doctor}-${date}`; // Crea un ID único para cada cita
-      await setDoc(doc($db, "appointments", docId), newAppointment);
+      await setDoc(doc($db, "appointments", newId), newAppointment); // Usamos el ID generado
 
       // Agregar la cita a la lista local
       appointments.value.push({ doctor, date, name });
@@ -188,6 +209,29 @@ export const useFirebaseAuth = () => {
     }
   };
 
+
+  // Obtener todos los usuarios registrados
+  const getAllUsers = async (): Promise<Array<{ id: string; email: string; role: string }>> => {
+    try {
+      const usersRef = collection($db, "users");
+      const querySnapshot = await getDocs(usersRef);
+
+      const users: Array<{ id: string; email: string; role: string }> = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        users.push({
+          id: doc.id,
+          email: data.email,
+          role: data.role,
+        });
+      });
+
+      return users;
+    } catch (error) {
+      console.error("Error al obtener todos los usuarios:", error);
+      return [];
+    }
+  };
 
   return {
     currentUser,
@@ -199,5 +243,6 @@ export const useFirebaseAuth = () => {
     getAppointments,
     createAppointment,
     appointments,
+    getAllUsers,
   };
 };

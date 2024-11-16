@@ -18,6 +18,7 @@
     "@nuxt/typescript-build": "^3.0.2",
     "@nuxtjs/toast": "^3.3.1",
     "firebase": "^11.0.2",
+    "nanoid": "^5.0.8",
     "pinia": "^2.2.6",
     "typescript": "^5.6.3",
     "yup": "^1.4.0",
